@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 MatViewer Simple
-Versión reducida y limpia: muestra contenido de archivos .mat
-Autor: ChatGPT (versión adaptada para uso práctico)
+Autor: Pedro Enrique Rueda
 """
 
 from ui.main_window import MainWindow
