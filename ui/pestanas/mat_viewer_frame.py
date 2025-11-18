@@ -5,7 +5,6 @@ import numpy as np
 from scipy.io import loadmat, savemat
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-# from ui.var_detail_window import VarDetailWindow
 import pandas as pd
 from ui.menu_sobre_pestanas.menu_sobre_pestanas import MenuSobrePestanas
 
@@ -364,29 +363,6 @@ class MatViewerFrame(ttk.Frame):
         except Exception as e:
             messagebox.showerror("Error", f"No se pudo guardar el archivo .mat:\n{e}")
 
-    def add_stat_subtab(self, stat_name):
-        """Crea una nueva sub-pestaña en el sub-notebook para una estadística."""
-        tab = ttk.Frame(self.sub_notebook)
-        self.sub_notebook.add(tab, text=stat_name)
-        self.sub_notebook.select(tab)
-
-        # Panel de controles
-        tab.controls_frame = ttk.Frame(tab)
-        tab.controls_frame.pack(fill="x", pady=(0, 6))
-
-        # Panel de figura
-        tab.fig_frame = ttk.Frame(tab)
-        tab.fig_frame.pack(fill="both", expand=True)
-
-        # Crear figura y canvas
-        tab.fig = plt.Figure(figsize=(8, 4))
-        tab.ax = tab.fig.add_subplot(111)
-        tab.canvas = FigureCanvasTkAgg(tab.fig, master=tab.fig_frame)
-        tab.canvas.get_tk_widget().pack(fill="both", expand=True)
-        toolbar = NavigationToolbar2Tk(tab.canvas, tab.fig_frame)
-        toolbar.update()
-
-        return tab
 
     def get_current_signal(self):
         if self.selected_vector is None:

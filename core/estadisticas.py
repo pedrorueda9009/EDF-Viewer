@@ -1,12 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import find_peaks
 from matplotlib.lines import Line2D
 from itertools import permutations
 import math
 import os
 from scipy.io import loadmat
 from scipy.ndimage import gaussian_filter1d
+from scipy.signal import find_peaks, medfilt, butter, filtfilt
 
 def ordinal_patterns(series, D, tau):
     """
@@ -137,3 +137,125 @@ def band_and_pompe(time_serie, embeding, delay, window, step,
 
     return np.array(freqs_list), np.array(H_norm), np.array(win_times)
 
+################################################################################
+# Funciones para calcular el IBI
+################################################################################
+def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
+    """Filtro pasa banda Butterworth."""
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    b, a = butter(order, [low, high], btype='band')
+    y = filtfilt(b, a, data)
+    return y
+
+def detect_r_peaks(signal, fs):
+    """
+    Detecta picos R robustamente en una señal de ECG filtrada.
+    
+    Args:
+        signal (np.array): Señal de ECG bruta.
+        fs (float): Frecuencia de muestreo.
+        
+    Returns:
+        np.array: Índices de los picos detectados.
+    """
+    # 1. Pre-procesamiento: Filtrado de la señal para enfatizar picos R
+    # Frecuencias típicas para ECG: 5 a 15 Hz
+    filtered_signal = butter_bandpass_filter(signal, 5, 15, fs, order=3)
+    
+    # 2. Rectificación y suavizado (para hacer los picos más obvios)
+    processed_signal = np.abs(filtered_signal)
+    # Filtro de media móvil (medfilt) para suavizar
+    processed_signal = medfilt(processed_signal, kernel_size=int(fs/5) | 1) # kernel debe ser impar
+
+    # 3. Detección de picos
+    # Calculamos la distancia mínima entre picos (basado en un ritmo cardíaco máximo de 200 BPM)
+    min_peak_distance = fs / 200 * 60 
+    
+    # Usamos find_peaks de Scipy
+    # height: encuentra picos por encima de un umbral (media + std)
+    # distance: distancia mínima requerida entre picos
+    peaks_indices, _ = find_peaks(
+        processed_signal, 
+        height=np.mean(processed_signal) + np.std(processed_signal), 
+        distance=min_peak_distance
+    )
+    
+    return peaks_indices
+
+
+# def calculate_ibi(raw_signal, fs, tab_ax, tab_canvas, plot_style_var, title_var):
+#     """
+#     Calcula los IBI a partir de la señal bruta (detectando picos R), 
+#     grafica y actualiza el canvas de Tkinter.
+#     """
+#     if len(raw_signal) < fs * 2: # Se necesitan al menos 2 segundos de datos
+#         raise ValueError("La señal es demasiado corta para calcular IBI.")
+
+#     # 1. Detectar picos R
+#     peaks_indices = detect_r_peaks(raw_signal, fs)
+    
+#     if len(peaks_indices) < 2:
+#         raise ValueError("No se pudieron detectar suficientes picos R en la señal para calcular IBI.")
+
+#     # 2. Calcular tiempos de picos en segundos
+#     peak_times_seconds = peaks_indices / fs
+
+#     # 3. Calcular IBI (diferencia entre tiempos consecutivos)
+#     ibi_values_seconds = np.diff(peak_times_seconds)
+#     ibi_values_ms = ibi_values_seconds * 1000 # Convertir a milisegundos
+
+#     # --- Lógica de Graficación ---
+#     plt.style.use(plot_style_var)
+#     tab_ax.clear()
+    
+#     # Graficamos los IBI en ms
+#     tab_ax.plot(ibi_values_ms, marker='o', linestyle='-', markersize=4, linewidth=1)
+    
+#     tab_ax.set_title(title_var)
+#     tab_ax.set_xlabel("Latido (n)")
+#     tab_ax.set_ylabel("IBI (ms)") # Ahora es fijo en MS
+#     tab_ax.grid(True)
+#     tab_canvas.draw()
+    
+#     plt.style.use('default') # Revertir estilo
+
+#     return ibi_values_ms
+
+def calculate_ibi(raw_signal, fs, tab_ax, tab_canvas, plot_style_var, title_var, xlabel_var, ylabel_var):
+    """
+    Calcula los IBI a partir de la señal bruta (detectando picos R), 
+    grafica y actualiza el canvas de Tkinter con títulos de ejes personalizados.
+    """
+    if len(raw_signal) < fs * 2:
+        raise ValueError("La señal es demasiado corta para calcular IBI.")
+
+    # 1. Detectar picos R (usando la función de arriba)
+    peaks_indices = detect_r_peaks(raw_signal, fs)
+    
+    if len(peaks_indices) < 2:
+        raise ValueError("No se pudieron detectar suficientes picos R en la señal para calcular IBI.")
+
+    # 2. Calcular tiempos de picos y IBI en milisegundos
+    peak_times_seconds = peaks_indices / fs
+    ibi_values_seconds = np.diff(peak_times_seconds)
+    ibi_values_ms = ibi_values_seconds * 1000 
+
+    # --- Lógica de Graficación ---
+    plt.style.use(plot_style_var) # style_var será 'default' ahora
+    tab_ax.clear()
+    
+    tab_ax.plot(ibi_values_ms, marker='o', linestyle='-', markersize=4, linewidth=1)
+    
+    # Usamos los parámetros de título y ejes pasados por el usuario
+    tab_ax.set_title(title_var)
+    tab_ax.set_xlabel(xlabel_var) 
+    tab_ax.set_ylabel(ylabel_var) 
+    tab_ax.grid(True)
+    tab_canvas.draw()
+    
+    plt.style.use('default') 
+
+    # Devolvemos los datos por si se quieren guardar
+    return ibi_values_ms

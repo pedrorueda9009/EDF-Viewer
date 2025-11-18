@@ -2,8 +2,8 @@ import os
 import tkinter as tk
 from tkinter import ttk
 import numpy as np
-from ui.menubar.archivo import MenuArchivo
-from ui.menubar.estadisticas import MenuEstadisticas
+from ui.menus.menu_archivo import MenuArchivo
+from ui.menus.menu_estadisticas import MenuEstadisticas
 from ui.menu_sobre_pestanas.menu_sobre_pestanas import MenuSobrePestanas
 
 class MainWindow:
