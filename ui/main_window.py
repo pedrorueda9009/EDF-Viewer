@@ -2,19 +2,15 @@ import os
 import tkinter as tk
 from tkinter import ttk
 import numpy as np
-# from ui.mat_viewer_frame import MatViewerFrame
-# from ui.edf_viewer_frame import EDFViewerFrame
-# from core.estadisticas import band_and_pompe
-
 from ui.menubar.archivo import MenuArchivo
 from ui.menubar.estadisticas import MenuEstadisticas
-from ui.pestanas.menu_sobre_pestanas import MenuSobrePestanas
+from ui.menu_sobre_pestanas.menu_sobre_pestanas import MenuSobrePestanas
 
 class MainWindow:
     def __init__(self, root):
         self.root = root
         self.root.title("EDF Viewr")
-        self.root.geometry("800x800")
+        self.root.geometry("800x900")
         self.data = None
         self.path = None
 

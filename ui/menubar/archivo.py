@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-from ui.edf_viewer_frame import EDFViewerFrame
-from ui.mat_viewer_frame import MatViewerFrame
+from ui.pestanas.edf_viewer_frame import EDFViewerFrame
+from ui.pestanas.mat_viewer_frame import MatViewerFrame
 import os
 from core.reader import read_mat_safely
 from core.summarizer import arr_summary

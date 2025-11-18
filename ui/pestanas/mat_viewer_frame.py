@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 # from ui.var_detail_window import VarDetailWindow
 import pandas as pd
+from ui.menu_sobre_pestanas.menu_sobre_pestanas import MenuSobrePestanas
+
 
 class MatViewerFrame(ttk.Frame):
     def __init__(self, master, path):
@@ -20,19 +22,6 @@ class MatViewerFrame(ttk.Frame):
             messagebox.showerror("Error", f"No se pudo abrir el archivo .mat:\n{e}")
             self.destroy()
             return
-
-        # self.current_channel_idx = None  # aunque no sean canales, mantiene compatibilidad
-        # self.ch_names = list(self.data.keys())
-        # self.data_matrix = []
-        # for k in self.ch_names:
-        #     arr = self.data[k]
-        #     if arr.ndim == 1:
-        #         self.data_matrix.append(arr)
-        #     elif arr.ndim == 2 and 1 in arr.shape:
-        #         self.data_matrix.append(arr.flatten())
-        #     else:
-        #         self.data_matrix.append(None)
-        # self.data_matrix = np.array(self.data_matrix, dtype=object)
 
         # Estado interno
         self.current_var = None
@@ -130,6 +119,10 @@ class MatViewerFrame(ttk.Frame):
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
         toolbar = NavigationToolbar2Tk(self.canvas, fig_frame)
         toolbar.update()
+
+        # creo el menu de cierre de pestaña sobre las subpestañas
+        MenuSobrePestanas(self, self.winfo_toplevel(), self.sub_notebook)
+
 
     # -------------------------------------------------------------------------
     def on_variable_select(self, event):

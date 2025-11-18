@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def arr_summary(value, maxitems=6):
     """Resumen simple del contenido de una variable."""
     if isinstance(value, np.ndarray):

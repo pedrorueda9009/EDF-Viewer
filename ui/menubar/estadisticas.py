@@ -1,8 +1,8 @@
 
 import tkinter as tk
 from tkinter import ttk, messagebox
-from ui.mat_viewer_frame import MatViewerFrame
-from ui.edf_viewer_frame import EDFViewerFrame
+from ui.pestanas.mat_viewer_frame import MatViewerFrame
+from ui.pestanas.edf_viewer_frame import EDFViewerFrame
 from core.estadisticas import band_and_pompe
 import numpy as np
 

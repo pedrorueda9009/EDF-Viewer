@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import mne
 from scipy.io import savemat
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-
+from ui.menu_sobre_pestanas.menu_sobre_pestanas import MenuSobrePestanas
 
 
 # ---------------------------
@@ -69,6 +69,7 @@ class EDFViewerFrame(ttk.Frame):
             self.destroy()
             return
 
+
         # señales y metadatos
         self.data = self.raw.get_data()            # shape: (n_channels, n_samples)
         self.info = self.raw.info
@@ -106,6 +107,10 @@ class EDFViewerFrame(ttk.Frame):
 
         # Guardamos la referencia para poder crear nuevas sub-pestañas más adelante
         self.current_subtab = initial_tab
+
+        # creo el menu de cierre de pestaña sobre las subpestañas
+        MenuSobrePestanas(self, self.winfo_toplevel(), self.sub_notebook)
+
 
         # --- Left: info general y lista canales ---
         info_frame = ttk.Frame(left)
