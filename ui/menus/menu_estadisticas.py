@@ -3,7 +3,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog 
 from ui.pestanas.mat_viewer_frame import MatViewerFrame
 from ui.pestanas.edf_viewer_frame import EDFViewerFrame
-from core.estadisticas import band_and_pompe, calculate_ibi
+from core.estadisticas import band_and_pompe, calculate_ibi, calculate_tau_d_heatmap
 import numpy as np
 from ui.estadisticas.stat_subtab import AddStatSubtab
 from scipy.io import savemat # Requerir scipy.io para guardar .mat
@@ -21,6 +21,7 @@ class MenuEstadisticas:
         self.menubar.add_cascade(label="Estadísticas", menu=stats_menu)
         stats_menu.add_command(label="Bandt & Pompe", command=lambda: self.open_stat_tab("Bandt & Pompe"))
         stats_menu.add_command(label="IBI", command=lambda: self.open_stat_tab("IBI"))
+        stats_menu.add_command(label = "tau(d) HeatMap", command = lambda: self.open_stat_tab("tau_d_heatmap"))
 
     def open_stat_tab(self, stat_name):
         """Abre una sub-pestaña de estadística en la pestaña actual."""
@@ -44,20 +45,8 @@ class MenuEstadisticas:
                 self.setup_bandt_pompe_controls(viewer_frame, subtab)
             elif stat_name == "IBI":
                 self.setup_IBI_controls(viewer_frame,subtab)
-                    
-
-            # if hasattr(viewer_frame, "add_stat_subtab"):
-            #     # subtab = viewer_frame.add_stat_subtab(stat_name)
-            #     subtab = add_stat_subtab(viewer_frame, stat_name)
-                
-            #     # Agregar controles específicos para la estadística
-            #     if stat_name == "Bandt & Pompe":
-            #         self.setup_bandt_pompe_controls(viewer_frame, subtab)
-            #     elif stat_name == "IBI":
-            #         self.setup_IBI_controls(viewer_frame,subtab)
-                    
-            # else:
-            #     messagebox.showinfo("Error", "La pestaña actual no soporta estadísticas.")
+            elif stat_name == "tau_d_heatmap":
+                self.setup_tau_d_heatmap(viewer_frame,subtab)
         else:
             messagebox.showinfo("Error", "No hay contenido en la pestaña seleccionada.")
 
@@ -234,3 +223,144 @@ class MenuEstadisticas:
             messagebox.showerror("Error de Importación", "La librería 'scipy' (scipy.io) es necesaria para guardar archivos .mat. Instálela con 'pip install scipy'.")
         except Exception as e:
             messagebox.showerror("Error al guardar", f"Ocurrió un error al guardar el archivo: {e}")
+
+    ########################################################################################
+    # ----------------- Tau (d) HeatMap -------------------------------------------------- #
+    ########################################################################################
+    def setup_tau_d_heatmap(self, viewer, subtab):
+
+        controls_frame = subtab.controls_frame
+        controls = ttk.LabelFrame(controls_frame, text="Parámetros para Tau(d): HeatMap")
+        controls.pack(fill="x", padx=2, pady=4)
+
+        fs_var = tk.DoubleVar()
+
+        title_var = tk.StringVar(value="Tau(d) HeatMap")
+        xlabel_var = tk.StringVar(value="Índice de ventana")
+        ylabel_var = tk.StringVar(value="Frecuencia relativa")
+
+        # Ejemplo de controles: retardo, dimensión embedding, paso, ventana
+        ttk.Label(controls, text="Limite superior para Tau:").grid(row=0, column=0, padx=4, pady=2)
+        tau_var_max = tk.IntVar(value=10)
+        ttk.Spinbox(controls, from_=1, to=500, width=5, textvariable=tau_var_max).grid(row=0, column=1, padx=4)
+
+        ttk.Label(controls, text="Dimensión embedding:").grid(row=0, column=2, padx=4, pady=2)
+        dim_var = tk.IntVar(value=3)
+        ttk.Spinbox(controls, from_=2, to=10, width=5, textvariable=dim_var).grid(row=0, column=3, padx=4)
+
+        ttk.Label(controls, text="Paso:").grid(row=1, column=0, padx=4, pady=2)
+        step_var = tk.IntVar(value=1)
+        ttk.Spinbox(controls, from_=1, to=10, width=5, textvariable=step_var).grid(row=1, column=1, padx=4)
+
+        ttk.Label(controls, text="Ventana:").grid(row=1, column=2, padx=4, pady=2)
+        win_var = tk.IntVar(value=100)
+        ttk.Spinbox(controls, from_=10, to=1000, width=6, textvariable=win_var).grid(row=1, column=3, padx=4)
+
+
+        # Título
+        ttk.Label(controls, text="Título Principal:").grid(
+            row=2, column=0, padx=4, pady=2, sticky='e'
+        )
+        ttk.Entry(controls, textvariable=title_var, width=30).grid(
+            row=2, column=1, padx=4, pady=2, columnspan=3, sticky='ew'
+        )
+
+        # Ejes
+        ttk.Label(controls, text="Título Eje X:").grid(
+            row=3, column=0, padx=4, pady=2, sticky='e'
+        )
+        ttk.Entry(controls, textvariable=xlabel_var, width=15).grid(
+            row=3, column=1, padx=4, pady=2, sticky='w'
+        )
+
+        ttk.Label(controls, text="Título Eje Y:").grid(
+            row=4, column=0, padx=4, pady=2, sticky='e'
+        )
+        ttk.Entry(controls, textvariable=ylabel_var, width=15).grid(
+            row=4, column=1, padx=4, pady=2, sticky='w'
+        )
+
+        # Botón de guardado (deshabilitado inicialmente)
+        save_button_ref = ttk.Button(
+            controls,
+            text="Guardar Tau(d) (.mat)",
+            command=lambda: self.save_tau_d_heatmap_to_mat(
+                subtab.tau_d_heatmap_data if hasattr(subtab, 'tau_d_heatmap_data') else None
+            ),
+            state='disabled'
+        )
+        save_button_ref.grid(row=5, column=3, columnspan=2, pady=6, padx=4, sticky='ew')
+
+        # Botón principal: calcula tau(d) heatmap
+        ttk.Button(controls, text="Calcular y Graficar",
+            command=lambda: self.run_tau_d_heatmap(
+                subtab,
+                tau_var_max.get(),
+                dim_var.get(),
+                step_var.get(),
+                win_var.get(),
+                title_var.get(),
+                xlabel_var.get(),
+                ylabel_var.get(),
+                save_button_ref
+            )
+        ).grid(row=3, column=0, columnspan=2, pady=6, padx=4, sticky='ew')
+
+    def run_tau_d_heatmap(self, subtab, tau_max, dim, step, win, title_text, xlabel_text, ylabel_text, save_button_ref):
+
+        current_viewer = self.get_current_viewer()
+        if current_viewer is None:
+            messagebox.showerror("Error", "No se encontró un visor EDF o MAT en esta pestaña.")
+            return
+        signal = current_viewer.get_current_signal()
+        if signal is None:
+            messagebox.showinfo("Atención", "No hay señal seleccionada.")
+            return
+
+        try:
+            
+            tau_d_heatmap_data = calculate_tau_d_heatmap(
+                time_serie=signal,
+                embeding=dim,
+                delay_max= tau_max,  
+                window= win, 
+                step = step,
+
+            )
+
+            subtab.tau_d_heatmap_data = tau_d_heatmap_data
+            save_button_ref.config(state='normal')
+        except Exception as e:
+            messagebox.showerror("Error tau_d_heatmap", str(e))
+            return
+
+
+        # ------------------------------------------------------------------
+        # Graficar heatmap directamente en la subpestaña (sin crear figura)
+        # ------------------------------------------------------------------
+
+        ax = subtab.ax
+        ax.clear()
+
+        # matriz heatmap
+        im = ax.imshow(
+            tau_d_heatmap_data,
+            cmap='jet',
+            aspect='auto',
+            origin='lower'
+        )
+
+        # colorbar incrustado en la subpestaña
+        if hasattr(subtab, "colorbar") and subtab.colorbar is not None:
+            subtab.colorbar.remove()
+
+        subtab.colorbar = ax.figure.colorbar(im, ax=ax)
+
+        # etiquetas
+        ax.set_xlabel(xlabel_text)
+        ax.set_ylabel(ylabel_text)
+        ax.set_title(title_text)
+
+        # refrescar gráfico
+        subtab.canvas.draw()
+

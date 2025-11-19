@@ -36,6 +36,10 @@ def validar_parametros(time_serie, embeding, window, step):
         raise ValueError("El paso entre ventanas debe ser mayor que cero.")
 
 
+
+
+
+
 def band_and_pompe(time_serie, embeding, delay, window, step,
                    graf, beat_times=None, plot=False, paso_ejeT=10,
                    paso_color=10, color1='red', color2='blue',
@@ -185,44 +189,6 @@ def detect_r_peaks(signal, fs):
     return peaks_indices
 
 
-# def calculate_ibi(raw_signal, fs, tab_ax, tab_canvas, plot_style_var, title_var):
-#     """
-#     Calcula los IBI a partir de la señal bruta (detectando picos R), 
-#     grafica y actualiza el canvas de Tkinter.
-#     """
-#     if len(raw_signal) < fs * 2: # Se necesitan al menos 2 segundos de datos
-#         raise ValueError("La señal es demasiado corta para calcular IBI.")
-
-#     # 1. Detectar picos R
-#     peaks_indices = detect_r_peaks(raw_signal, fs)
-    
-#     if len(peaks_indices) < 2:
-#         raise ValueError("No se pudieron detectar suficientes picos R en la señal para calcular IBI.")
-
-#     # 2. Calcular tiempos de picos en segundos
-#     peak_times_seconds = peaks_indices / fs
-
-#     # 3. Calcular IBI (diferencia entre tiempos consecutivos)
-#     ibi_values_seconds = np.diff(peak_times_seconds)
-#     ibi_values_ms = ibi_values_seconds * 1000 # Convertir a milisegundos
-
-#     # --- Lógica de Graficación ---
-#     plt.style.use(plot_style_var)
-#     tab_ax.clear()
-    
-#     # Graficamos los IBI en ms
-#     tab_ax.plot(ibi_values_ms, marker='o', linestyle='-', markersize=4, linewidth=1)
-    
-#     tab_ax.set_title(title_var)
-#     tab_ax.set_xlabel("Latido (n)")
-#     tab_ax.set_ylabel("IBI (ms)") # Ahora es fijo en MS
-#     tab_ax.grid(True)
-#     tab_canvas.draw()
-    
-#     plt.style.use('default') # Revertir estilo
-
-#     return ibi_values_ms
-
 def calculate_ibi(raw_signal, fs, tab_ax, tab_canvas, plot_style_var, title_var, xlabel_var, ylabel_var):
     """
     Calcula los IBI a partir de la señal bruta (detectando picos R), 
@@ -259,3 +225,24 @@ def calculate_ibi(raw_signal, fs, tab_ax, tab_canvas, plot_style_var, title_var,
 
     # Devolvemos los datos por si se quieren guardar
     return ibi_values_ms
+
+def calculate_tau_d_heatmap(time_serie, embeding, delay_max, window, step):
+
+    ts = np.array(time_serie)
+    if ts.ndim == 1:
+        N = ts.size
+    else:  
+        N = max(ts.shape)
+
+    start_ventanas = range(0, N - window + 1, step)
+    mapa_tiempo_vs_tau = np.zeros((delay_max, len(start_ventanas)))
+
+    for tau in range(1,delay_max + 1): 
+        freqs, Hnorm, times = band_and_pompe(time_serie, embeding, tau, window, step, graf=False,beat_times=None)
+        mapa_tiempo_vs_tau[tau-1,:] = Hnorm
+            
+    return mapa_tiempo_vs_tau
+
+
+
+
