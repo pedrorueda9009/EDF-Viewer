@@ -8,6 +8,9 @@ import numpy as np
 from ui.estadisticas.stat_subtab import AddStatSubtab
 from scipy.io import savemat # Requerir scipy.io para guardar .mat
 
+from multiprocessing import Process, Queue
+from core.mp_workers import worker_bandt_pompe, worker_tau_d_heatmap
+
 
 class MenuEstadisticas:
     def __init__(self,mainwindow,menubar,notebook):
@@ -75,23 +78,67 @@ class MenuEstadisticas:
             return
         
         signal = np.asarray(signal, dtype=float)
-        
-        # Calcular Bandt & Pompe
-        try:
-            freqs, Hnorm, times = band_and_pompe(
-                signal,
-                dim,     # dimensión embedding
-                tau,     # retardo
-                win,     # tamaño ventana
-                step,    # paso
-                graf=False,
-                beat_times=None
-            )
-        except Exception as e:
-            messagebox.showerror("Error", str(e))
+
+        # # Calcular Bandt & Pompe
+        # try:
+        #     freqs, Hnorm, times = band_and_pompe(
+        #         signal,
+        #         dim,     # dimensión embedding
+        #         tau,     # retardo
+        #         win,     # tamaño ventana
+        #         step,    # paso
+        #         graf=False,
+        #         beat_times=None
+        #     )
+        # except Exception as e:
+        #     messagebox.showerror("Error", str(e))
+        #     return
+
+        # # Graficar
+        # tab.ax.clear()
+        # tab.ax.plot(Hnorm, linewidth=1)
+        # tab.ax.set_title("Entropía Bandt & Pompe (normalizada)")
+        # tab.ax.set_xlabel("Ventana")
+        # tab.ax.set_ylabel("H_norm")
+        # tab.ax.grid(True)
+        # tab.canvas.draw()
+
+        # -------------------- multiprocessing --------------------
+        queue = Queue()
+        p = Process(target=worker_bandt_pompe,
+                    args=(signal, dim, tau, win, step, queue))
+        p.start()
+
+        tab.mp_process = p
+        tab.mp_queue = queue
+
+        if hasattr(tab, "disable_controls"):
+            tab.disable_controls()
+
+        self._check_bandt_pompe(tab)
+        # ---------------------------------------------------------
+
+
+
+
+    def _check_bandt_pompe(self, tab):
+        if tab.mp_queue.empty():
+            tab.after(150, lambda: self._check_bandt_pompe(tab))
             return
 
-        # Graficar
+        status, payload = tab.mp_queue.get()
+
+        try:
+            tab.mp_process.join(timeout=0.1)
+        except:
+            pass
+
+        if status == "error":
+            messagebox.showerror("Error Bandt & Pompe", payload)
+            return
+
+        freqs, Hnorm, times = payload
+
         tab.ax.clear()
         tab.ax.plot(Hnorm, linewidth=1)
         tab.ax.set_title("Entropía Bandt & Pompe (normalizada)")
@@ -99,6 +146,10 @@ class MenuEstadisticas:
         tab.ax.set_ylabel("H_norm")
         tab.ax.grid(True)
         tab.canvas.draw()
+
+        if hasattr(tab, "enable_controls"):
+            tab.enable_controls()
+
 
 
     def setup_bandt_pompe_controls(self, viewer, subtab):
@@ -306,6 +357,8 @@ class MenuEstadisticas:
             )
         ).grid(row=3, column=0, columnspan=2, pady=6, padx=4, sticky='ew')
 
+
+
     def run_tau_d_heatmap(self, subtab, tau_max, dim, step, win, title_text, xlabel_text, ylabel_text, save_button_ref):
 
         current_viewer = self.get_current_viewer()
@@ -317,32 +370,98 @@ class MenuEstadisticas:
             messagebox.showinfo("Atención", "No hay señal seleccionada.")
             return
 
-        try:
+        # try:
             
-            tau_d_heatmap_data = calculate_tau_d_heatmap(
-                time_serie=signal,
-                embeding=dim,
-                delay_max= tau_max,  
-                window= win, 
-                step = step,
+        #     tau_d_heatmap_data = calculate_tau_d_heatmap(
+        #         time_serie=signal,
+        #         embeding=dim,
+        #         delay_max= tau_max,  
+        #         window= win, 
+        #         step = step,
 
-            )
+        #     )
 
-            subtab.tau_d_heatmap_data = tau_d_heatmap_data
-            save_button_ref.config(state='normal')
-        except Exception as e:
-            messagebox.showerror("Error tau_d_heatmap", str(e))
+        #     subtab.tau_d_heatmap_data = tau_d_heatmap_data
+        #     save_button_ref.config(state='normal')
+        # except Exception as e:
+        #     messagebox.showerror("Error tau_d_heatmap", str(e))
+        #     return
+
+
+        # # ------------------------------------------------------------------
+        # # Graficar heatmap directamente en la subpestaña (sin crear figura)
+        # # ------------------------------------------------------------------
+
+        # ax = subtab.ax
+        # ax.clear()
+
+        # # matriz heatmap
+        # im = ax.imshow(
+        #     tau_d_heatmap_data,
+        #     cmap='jet',
+        #     aspect='auto',
+        #     origin='lower'
+        # )
+
+        # # colorbar incrustado en la subpestaña
+        # if hasattr(subtab, "colorbar") and subtab.colorbar is not None:
+        #     subtab.colorbar.remove()
+
+        # subtab.colorbar = ax.figure.colorbar(im, ax=ax)
+
+        # # etiquetas
+        # ax.set_xlabel(xlabel_text)
+        # ax.set_ylabel(ylabel_text)
+        # ax.set_title(title_text)
+
+        # # refrescar gráfico
+        # subtab.canvas.draw()
+
+        # -------------------- multiprocessing --------------------
+        queue = Queue()
+        p = Process(target=worker_tau_d_heatmap,
+                    args=(signal, dim, tau_max, win, step, queue))
+        p.start()
+
+        subtab.mp_process = p
+        subtab.mp_queue = queue
+
+        if hasattr(subtab, "disable_controls"):
+            subtab.disable_controls()
+
+        # guardo datos extra para graficar
+        subtab._tau_title = title_text
+        subtab._tau_xlabel = xlabel_text
+        subtab._tau_ylabel = ylabel_text
+        subtab._tau_save_btn = save_button_ref
+
+        self._check_tau_d_heatmap(subtab)
+        # ---------------------------------------------------------
+
+
+    def _check_tau_d_heatmap(self, subtab):
+        if subtab.mp_queue.empty():
+            subtab.after(150, lambda: self._check_tau_d_heatmap(subtab))
             return
 
+        status, payload = subtab.mp_queue.get()
 
-        # ------------------------------------------------------------------
-        # Graficar heatmap directamente en la subpestaña (sin crear figura)
-        # ------------------------------------------------------------------
+        try:
+            subtab.mp_process.join(timeout=0.1)
+        except:
+            pass
+
+        if status == "error":
+            messagebox.showerror("Error tau(d) HeatMap", payload)
+            return
+
+        tau_d_heatmap_data = payload
+        subtab.tau_d_heatmap_data = tau_d_heatmap_data
+        subtab._tau_save_btn.config(state='normal')
 
         ax = subtab.ax
         ax.clear()
 
-        # matriz heatmap
         im = ax.imshow(
             tau_d_heatmap_data,
             cmap='jet',
@@ -350,17 +469,17 @@ class MenuEstadisticas:
             origin='lower'
         )
 
-        # colorbar incrustado en la subpestaña
         if hasattr(subtab, "colorbar") and subtab.colorbar is not None:
             subtab.colorbar.remove()
 
         subtab.colorbar = ax.figure.colorbar(im, ax=ax)
 
-        # etiquetas
-        ax.set_xlabel(xlabel_text)
-        ax.set_ylabel(ylabel_text)
-        ax.set_title(title_text)
+        ax.set_title(subtab._tau_title)
+        ax.set_xlabel(subtab._tau_xlabel)
+        ax.set_ylabel(subtab._tau_ylabel)
 
-        # refrescar gráfico
         subtab.canvas.draw()
+
+        if hasattr(subtab, "enable_controls"):
+            subtab.enable_controls()
 

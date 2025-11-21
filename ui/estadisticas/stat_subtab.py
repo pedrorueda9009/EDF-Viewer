@@ -40,3 +40,13 @@ class AddStatSubtab(ttk.Frame):
         self.canvas.get_tk_widget().pack(fill="both", expand=True)
         toolbar = NavigationToolbar2Tk(self.canvas, self.fig_frame)
         toolbar.update()
+
+    def disable_controls(self):
+        for w in self.controls_frame.winfo_children():
+            try: w.configure(state='disabled')
+            except: pass
+
+    def enable_controls(self):
+        for w in self.controls_frame.winfo_children():
+            try: w.configure(state='normal')
+            except: pass

@@ -6,6 +6,7 @@ import os
 from core.reader import read_mat_safely
 from core.summarizer import arr_summary
 import numpy as np
+from pathlib import Path
 
 class MenuArchivo:
     def __init__(self, mainwindow, root, menubar,notebook):
@@ -39,7 +40,7 @@ class MenuArchivo:
         )
         if not path:
             return
-        
+
         # Crear una nueva pestaña en el notebook
         tab = ttk.Frame(self.notebook)
         self.notebook.add(tab, text=os.path.basename(path))
@@ -51,7 +52,6 @@ class MenuArchivo:
         # Activar la nueva pestaña
         self.notebook.select(tab)
 
-        # EDFViewerWindow(self.root, path)
 
     def open_mat(self):
         path = filedialog.askopenfilename(

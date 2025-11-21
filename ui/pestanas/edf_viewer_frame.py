@@ -7,6 +7,7 @@ import mne
 from scipy.io import savemat
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from ui.menu_sobre_pestanas.menu_sobre_pestanas import MenuSobrePestanas
+import pyedflib
 
 # ---------------------------
 # Ventana para archivos EDF
@@ -16,6 +17,7 @@ class EDFViewerFrame(ttk.Frame):
         super().__init__(master)
 
         try:
+
             try:
                 # Intento estándar (UTF-8)
                 self.raw = mne.io.read_raw_edf(
@@ -41,23 +43,6 @@ class EDFViewerFrame(ttk.Frame):
                     self.destroy()
                     return
 
-            except ValueError as e:
-                # Error clásico: EDF corrupto, truncado o mal formado
-                messagebox.showerror(
-                    "Error",
-                    f"El archivo EDF parece estar dañado o incompleto.\n\n{e}"
-                )
-                self.destroy()
-                return
-
-            except OSError as e:
-                # Permisos, archivo inexistente, path inválido
-                messagebox.showerror(
-                    "Error",
-                    f"No se pudo acceder al archivo EDF.\n\n{e}"
-                )
-                self.destroy()
-                return
 
         except Exception as e:
             # Cualquier cosa inesperada (muy raro)
