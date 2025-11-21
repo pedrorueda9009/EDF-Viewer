@@ -10,6 +10,8 @@ from scipy.io import savemat # Requerir scipy.io para guardar .mat
 
 from multiprocessing import Process, Queue
 from core.mp_workers import worker_bandt_pompe, worker_tau_d_heatmap
+from core.mp_workers import worker_patrones_apilados
+import matplotlib.transforms as mtransforms
 
 
 class MenuEstadisticas:
@@ -25,6 +27,7 @@ class MenuEstadisticas:
         stats_menu.add_command(label="Bandt & Pompe", command=lambda: self.open_stat_tab("Bandt & Pompe"))
         stats_menu.add_command(label="IBI", command=lambda: self.open_stat_tab("IBI"))
         stats_menu.add_command(label = "tau(d) HeatMap", command = lambda: self.open_stat_tab("tau_d_heatmap"))
+        stats_menu.add_command(label= "Patrones Apilados", command= lambda: self.open_stat_tab("patrones_apilados"))
 
     def open_stat_tab(self, stat_name):
         """Abre una sub-pestaña de estadística en la pestaña actual."""
@@ -50,6 +53,8 @@ class MenuEstadisticas:
                 self.setup_IBI_controls(viewer_frame,subtab)
             elif stat_name == "tau_d_heatmap":
                 self.setup_tau_d_heatmap(viewer_frame,subtab)
+            elif stat_name == "patrones_apilados":
+                self.setup_patrones_apilados(viewer_frame,subtab)
         else:
             messagebox.showinfo("Error", "No hay contenido en la pestaña seleccionada.")
 
@@ -79,30 +84,6 @@ class MenuEstadisticas:
         
         signal = np.asarray(signal, dtype=float)
 
-        # # Calcular Bandt & Pompe
-        # try:
-        #     freqs, Hnorm, times = band_and_pompe(
-        #         signal,
-        #         dim,     # dimensión embedding
-        #         tau,     # retardo
-        #         win,     # tamaño ventana
-        #         step,    # paso
-        #         graf=False,
-        #         beat_times=None
-        #     )
-        # except Exception as e:
-        #     messagebox.showerror("Error", str(e))
-        #     return
-
-        # # Graficar
-        # tab.ax.clear()
-        # tab.ax.plot(Hnorm, linewidth=1)
-        # tab.ax.set_title("Entropía Bandt & Pompe (normalizada)")
-        # tab.ax.set_xlabel("Ventana")
-        # tab.ax.set_ylabel("H_norm")
-        # tab.ax.grid(True)
-        # tab.canvas.draw()
-
         # -------------------- multiprocessing --------------------
         queue = Queue()
         p = Process(target=worker_bandt_pompe,
@@ -116,8 +97,6 @@ class MenuEstadisticas:
             tab.disable_controls()
 
         self._check_bandt_pompe(tab)
-        # ---------------------------------------------------------
-
 
 
 
@@ -370,52 +349,6 @@ class MenuEstadisticas:
             messagebox.showinfo("Atención", "No hay señal seleccionada.")
             return
 
-        # try:
-            
-        #     tau_d_heatmap_data = calculate_tau_d_heatmap(
-        #         time_serie=signal,
-        #         embeding=dim,
-        #         delay_max= tau_max,  
-        #         window= win, 
-        #         step = step,
-
-        #     )
-
-        #     subtab.tau_d_heatmap_data = tau_d_heatmap_data
-        #     save_button_ref.config(state='normal')
-        # except Exception as e:
-        #     messagebox.showerror("Error tau_d_heatmap", str(e))
-        #     return
-
-
-        # # ------------------------------------------------------------------
-        # # Graficar heatmap directamente en la subpestaña (sin crear figura)
-        # # ------------------------------------------------------------------
-
-        # ax = subtab.ax
-        # ax.clear()
-
-        # # matriz heatmap
-        # im = ax.imshow(
-        #     tau_d_heatmap_data,
-        #     cmap='jet',
-        #     aspect='auto',
-        #     origin='lower'
-        # )
-
-        # # colorbar incrustado en la subpestaña
-        # if hasattr(subtab, "colorbar") and subtab.colorbar is not None:
-        #     subtab.colorbar.remove()
-
-        # subtab.colorbar = ax.figure.colorbar(im, ax=ax)
-
-        # # etiquetas
-        # ax.set_xlabel(xlabel_text)
-        # ax.set_ylabel(ylabel_text)
-        # ax.set_title(title_text)
-
-        # # refrescar gráfico
-        # subtab.canvas.draw()
 
         # -------------------- multiprocessing --------------------
         queue = Queue()
@@ -436,7 +369,6 @@ class MenuEstadisticas:
         subtab._tau_save_btn = save_button_ref
 
         self._check_tau_d_heatmap(subtab)
-        # ---------------------------------------------------------
 
 
     def _check_tau_d_heatmap(self, subtab):
@@ -483,3 +415,138 @@ class MenuEstadisticas:
         if hasattr(subtab, "enable_controls"):
             subtab.enable_controls()
 
+#################################################################################################
+# ---- Distribucion de Patrones Apilados --------------------------------------------------------
+    def setup_patrones_apilados(self, viewer, subtab):
+
+        controls_frame = subtab.controls_frame
+        controls = ttk.LabelFrame(controls_frame, text="Distribucion de Patrones Apilados")
+        controls.pack(fill="x", padx=2, pady=4)
+
+        fs_var = tk.DoubleVar()
+
+        title_var = tk.StringVar(value="Patrons Apilados")
+        xlabel_var = tk.StringVar(value="Índice de ventana")
+        ylabel_var = tk.StringVar(value="Frecuencia relativa")
+
+        # Ejemplo de controles: retardo, dimensión embedding, paso, ventana
+        ttk.Label(controls, text="Retardo:").grid(row=0, column=0, padx=4, pady=2)
+        tau_var = tk.IntVar(value=1)
+        ttk.Spinbox(controls, from_=1, to=20, width=5, textvariable=tau_var).grid(row=0, column=1, padx=4)
+
+        ttk.Label(controls, text="Dimensión embedding:").grid(row=0, column=2, padx=4, pady=2)
+        dim_var = tk.IntVar(value=3)
+        ttk.Spinbox(controls, from_=2, to=10, width=5, textvariable=dim_var).grid(row=0, column=3, padx=4)
+
+        ttk.Label(controls, text="Paso:").grid(row=1, column=0, padx=4, pady=2)
+        step_var = tk.IntVar(value=1)
+        ttk.Spinbox(controls, from_=1, to=10, width=5, textvariable=step_var).grid(row=1, column=1, padx=4)
+
+        ttk.Label(controls, text="Ventana:").grid(row=1, column=2, padx=4, pady=2)
+        win_var = tk.IntVar(value=100)
+        ttk.Spinbox(controls, from_=10, to=1000, width=6, textvariable=win_var).grid(row=1, column=3, padx=4)
+
+        ttk.Button(controls, text="Calcular",
+                            command=lambda: self.run_patrones_apilados(
+                                subtab,
+                                tau_var.get(),
+                                dim_var.get(),
+                                step_var.get(),
+                                win_var.get()
+                            )).grid(row=2, column=0, columnspan=4, pady=6)
+
+    def run_patrones_apilados(self,tab,tau_var,dim_var,step_var,win_var):
+
+        # Obtener el viewer activo en la pestaña actual
+        viewer = self.get_current_viewer()
+
+        if viewer is None:
+            messagebox.showerror("Error", "No se encontró un visor EDF o MAT en esta pestaña.")
+            return
+
+        signal = viewer.get_current_signal()
+        
+        if signal is None:
+            messagebox.showinfo("Atención", "No hay señal seleccionada.")
+            return
+        
+        signal = np.asarray(signal, dtype=float)
+
+        # -------------------- multiprocessing --------------------
+        queue = Queue()
+        p = Process(target=worker_patrones_apilados,
+                    args=(signal, dim_var, tau_var, win_var, step_var, queue))
+        p.start()
+
+        tab.mp_process = p
+        tab.mp_queue = queue
+
+        if hasattr(tab, "disable_controls"):
+            tab.disable_controls()
+
+        self._check_patrones_apilados(tab)
+
+
+    def _check_patrones_apilados(self, tab):
+
+        if tab.mp_queue.empty():
+            tab.after(150, lambda: self._check_patrones_apilados(tab))
+            return
+
+        status, payload = tab.mp_queue.get()
+
+        try:
+            tab.mp_process.join(timeout=0.1)
+        except:
+            pass
+
+        if status == "error":
+            messagebox.showerror("Error Patrones Apilados", payload)
+            return
+
+        n_windows, n_patterns, cum, indices, mid, colors, handles = payload
+
+        tab.ax.clear()
+        ax = tab.ax
+        # Graficar áreas apiladas
+        for k in range(n_patterns):
+            ax.fill_between(indices,cum[:, k],cum[:, k+1],color=colors[k],alpha=0.85)
+        # Ajustes de ejes
+        ax.set_ylim(-0.02, 1.02)
+        ax.set_xlim(0, n_windows - 1)
+        ax.set_ylabel('Frecuencia relativa (pₖ)')
+        ax.set_xlabel('Índice de ventana')
+        # Escribir índices al final de cada área
+        for k in range(n_patterns):
+            ax.text(n_windows - 1 + 0.3,mid[-1, k],f'{k}',va='center',fontsize=9)
+        # Construcción de leyenda
+        leg = ax.legend(
+            handles=handles,
+            bbox_to_anchor=(1.02, 1),
+            loc='upper left',
+            title="índice → orden"
+        )
+
+        # --- AJUSTE FUNDAMENTAL ---
+        fig = ax.figure
+
+        # Ajustar márgenes para hacer espacio al legend
+        fig.tight_layout()
+        fig.subplots_adjust(right=0.82)   # empuja el gráfico hacia la izquierda
+
+        # Forzar a Tkinter a recalcular el espacio visual del canvas
+        tab.canvas.get_tk_widget().update_idletasks()
+
+        # Redibujar
+        tab.canvas.draw()
+
+        # leg.set_draggable(True) # permite mover el legend
+        tab.ax.set_title("Frecuencia de Patrones Apilados")
+        tab.ax.set_xlabel("Ventana")
+        tab.ax.set_ylabel("H_norm")
+        tab.ax.grid(True)
+        tab.canvas.draw()
+
+
+        if hasattr(tab, "enable_controls"):
+            tab.enable_controls()

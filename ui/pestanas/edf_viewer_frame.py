@@ -17,32 +17,23 @@ class EDFViewerFrame(ttk.Frame):
         super().__init__(master)
 
         try:
-
             try:
-                # Intento estándar (UTF-8)
-                self.raw = mne.io.read_raw_edf(
-                    path, 
-                    preload=True, 
-                    verbose=False
-                )
-
-            except UnicodeDecodeError:
-                # Fallback si la cabecera está en Latin-1 u otra codificación rara
-                try:
-                    self.raw = mne.io.read_raw_edf(
-                        path,
-                        preload=True,
-                        verbose=False,
-                        encoding="latin1"
-                    )
-                except Exception as e_inner:
-                    messagebox.showerror(
-                        "Error",
-                        f"No se pudo abrir el archivo EDF (problema de codificación).\n\n{e_inner}"
-                    )
+                # Primer intento
+                self.raw = mne.io.read_raw_edf(path, preload=False, verbose=False)
+            except Exception as e1:
+                if "invalid byte" in str(e1).lower():
+                    # Reintento con codificación Latin1
+                    try:
+                        self.raw = mne.io.read_raw_edf(path, preload=False, verbose=False, encoding="latin1")
+                        print(" Se releyó con encoding='latin1'\n")
+                    except Exception as e2:
+                        print(f" \n Error leyendo el archivo con latin1. Error: {e2} \n")
+                        self.destroy()
+                        return 
+                else:
+                    print(f" \n Error leyendo el archivo. Error: {e1} \n")
                     self.destroy()
-                    return
-
+                    return 
 
         except Exception as e:
             # Cualquier cosa inesperada (muy raro)
@@ -52,6 +43,32 @@ class EDFViewerFrame(ttk.Frame):
             )
             self.destroy()
             return
+
+
+        # try:
+        #     try:
+        #         # Intento estándar (UTF-8)
+        #         self.raw = mne.io.read_raw_edf(path,preload=False,verbose=False)
+
+        #     except UnicodeDecodeError:
+        #         try:
+        #             self.raw = mne.io.read_raw_edf(path,preload=False,verbose=False,encoding="latin1")
+        #         except Exception as e_inner:
+        #             messagebox.showerror(
+        #                 "Error",
+        #                 f"No se pudo abrir el archivo EDF (problema de codificación).\n\n{e_inner}"
+        #             )
+        #             self.destroy()
+        #             return
+
+        # except Exception as e:
+        #     # Cualquier cosa inesperada (muy raro)
+        #     messagebox.showerror(
+        #         "Error",
+        #         f"Ocurrió un error inesperado al cargar el archivo EDF:\n\n{e}"
+        #     )
+        #     self.destroy()
+        #     return
 
 
         # señales y metadatos

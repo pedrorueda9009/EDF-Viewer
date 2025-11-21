@@ -8,6 +8,31 @@ from scipy.io import loadmat
 from scipy.ndimage import gaussian_filter1d
 from scipy.signal import find_peaks, medfilt, butter, filtfilt
 
+def patrones_apilados(freqs,D):
+    
+    ' calculos necesarios para graficar los patrones apilados.'
+    n_windows, n_patterns = freqs.shape
+
+    cum = np.zeros((n_windows, n_patterns + 1))
+    cum[:, 0] = 1.0
+    for k in range(n_patterns):
+        cum[:, k+1] = cum[:, k] - freqs[:, k]
+
+    # eje principal = índice
+    indices = np.arange(n_windows)
+    mid = (cum[:, :-1] + cum[:, 1:]) / 2.0
+    all_perms = list(permutations(range(D)))
+    pattern_labels = [f"{idx} → {perm}" for idx, perm in enumerate(all_perms)]
+    colors = plt.cm.inferno(np.linspace(0, 1, n_patterns))
+    handles = [
+        Line2D([], [], color=colors[k], lw=6, label=pattern_labels[k])
+        for k in range(n_patterns)
+    ]
+
+    return n_windows, n_patterns, cum, indices, mid, colors, handles
+
+
+
 def ordinal_patterns(series, D, tau):
     """
     Devuelve lista de tuplas con el patrón ordinal para cada embedding disponible.

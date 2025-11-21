@@ -7,6 +7,7 @@ from core.reader import read_mat_safely
 from core.summarizer import arr_summary
 import numpy as np
 from pathlib import Path
+import mne
 
 class MenuArchivo:
     def __init__(self, mainwindow, root, menubar,notebook):
@@ -34,6 +35,7 @@ class MenuArchivo:
         archivo_menu.add_command(label="Salir", command=self.root.quit)
 
     def open_edf(self):
+
         path = filedialog.askopenfilename(
             title="Seleccionar archivo EDF",
             filetypes=[("Archivos EDF", "*.edf"), ("Todos", "*.*")]
@@ -51,6 +53,7 @@ class MenuArchivo:
 
         # Activar la nueva pestaña
         self.notebook.select(tab)
+
 
 
     def open_mat(self):
